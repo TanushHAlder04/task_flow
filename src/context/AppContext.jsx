@@ -8,10 +8,10 @@ import { AppContext } from '../hooks/useAppContext';
 
 /**
  * Central provider that composes custom hooks, authentication,
- * priority task reminders, and backend API integration.
+ * priority task reminders, and backend API integration with strict data isolation.
  */
 export function AppProvider({ children }) {
-  // Authentication hook
+  // Authentication hook (user, token, isAuthenticated)
   const auth = useAuth();
 
   // Auth Modal State
@@ -20,26 +20,28 @@ export function AppProvider({ children }) {
   // Priority Reminders Panel Toggle State
   const [showPriorityReminders, setShowPriorityReminders] = useState(false);
 
-  // Theme hook (with backend sync capability)
-  const theme = useTheme(auth.isAuthenticated);
+  // Theme hook (strictly isolated: guest in localStorage, authenticated in MongoDB)
+  const theme = useTheme(auth.isAuthenticated, auth.token);
 
-  // Sync user theme preference when user profile loads
+  // Sync user theme preference when user profile loads from backend
+  const userDarkMode = auth.user?.darkMode;
+  const setDarkMode = theme.setDarkMode;
   useEffect(() => {
-    if (auth.user && typeof auth.user.darkMode === 'boolean') {
-      theme.setDarkMode(auth.user.darkMode);
+    if (typeof userDarkMode === 'boolean') {
+      setDarkMode(userDarkMode);
     }
-  }, [auth.user, theme]);
+  }, [userDarkMode, setDarkMode]);
 
   // Sidebar visibility
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
-  // Tasks (core data)
-  const taskManager = useTasks(auth.isAuthenticated);
+  // Tasks (strictly isolated: guest in localStorage, authenticated in MongoDB)
+  const taskManager = useTasks(auth.isAuthenticated, auth.token);
 
-  // Lists (depends on tasks for counts & updateTask for list deletion reassignment)
-  const listManager = useLists(taskManager.tasks, taskManager.updateTask, auth.isAuthenticated);
+  // Lists (strictly isolated: guest in localStorage, authenticated in MongoDB)
+  const listManager = useLists(taskManager.tasks, taskManager.updateTask, auth.isAuthenticated, auth.token);
 
-  // Filters (depends on tasks and lists)
+  // Filters (depends on active tasks and lists)
   const filterManager = useTaskFilters(taskManager.tasks, listManager.lists);
 
   // Priority Count (Starred, Urgent, or Overdue/Due Today)

@@ -33,32 +33,48 @@ function getDefaultTasks() {
 }
 
 /**
- * Custom hook for all task state and operations.
- * Connects with Express backend API when authenticated.
+ * Custom hook for all task state and operations with strict data isolation.
+ * - Guest Mode (!isAuthenticated): Operates STRICTLY in localStorage ('taskflow_guest_tasks') with ZERO API calls.
+ * - Authenticated Mode (isAuthenticated): Operates via MongoDB REST API with JWT Bearer token.
  */
-function useTasks(isAuthenticated = false) {
-  const [tasks, setTasks] = useLocalStorage('tasks', getDefaultTasks());
+function useTasks(isAuthenticated = false, token = null) {
+  // Guest tasks stored strictly in localStorage
+  const [guestTasks, setGuestTasks] = useLocalStorage('taskflow_guest_tasks', getDefaultTasks());
+
+  // Authenticated tasks stored in memory from MongoDB
+  const [apiTasks, setApiTasks] = useState([]);
   const [selectedTaskId, setSelectedTaskId] = useState(null);
 
-  // Fetch tasks from API when authenticated
-  useEffect(() => {
-    if (isAuthenticated) {
-      api.getTasks()
-        .then(apiTasks => {
-          if (Array.isArray(apiTasks)) {
-            // Map MongoDB _id to id
-            const formatted = apiTasks.map(t => ({
-              ...t,
-              id: t._id || t.id
-            }));
-            setTasks(formatted);
-          }
-        })
-        .catch(err => console.warn('API getTasks failed, using local storage:', err));
-    }
-  }, [isAuthenticated, setTasks]);
+  // Active tasks based on authentication mode
+  const tasks = useMemo(() => {
+    return isAuthenticated && token ? apiTasks : guestTasks;
+  }, [isAuthenticated, token, apiTasks, guestTasks]);
 
-  // Derive selected task
+  // Fetch tasks from API strictly when authenticated with a valid token
+  useEffect(() => {
+    if (!isAuthenticated || !token) return;
+
+    let isMounted = true;
+    api.getTasks()
+      .then(data => {
+        if (isMounted && Array.isArray(data)) {
+          const formatted = data.map(t => ({
+            ...t,
+            id: t._id || t.id
+          }));
+          setApiTasks(formatted);
+        }
+      })
+      .catch(err => {
+        console.error('API getTasks error:', err.message);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [isAuthenticated, token]);
+
+  // Derive selected task from active tasks
   const selectedTask = useMemo(() => {
     if (!selectedTaskId) return null;
     return tasks.find(t => (t.id === selectedTaskId || t._id === selectedTaskId)) || null;
@@ -83,17 +99,19 @@ function useTasks(isAuthenticated = false) {
 
     const listName = activeSection === 'list' && selectedList !== 'all' ? selectedList : 'personal';
 
-    if (isAuthenticated) {
+    // Authenticated Mode: Send to MongoDB
+    if (isAuthenticated && token) {
       try {
         const apiTask = await api.createTask(trimmedTitle, listName, dueDate);
-        const newTask = { ...apiTask, id: apiTask._id };
-        setTasks(prev => [newTask, ...prev]);
-        return;
+        const newTask = { ...apiTask, id: apiTask._id || apiTask.id };
+        setApiTasks(prev => [newTask, ...prev]);
       } catch (err) {
-        console.warn('API createTask failed, saving locally:', err);
+        console.error('API createTask failed:', err);
       }
+      return;
     }
 
+    // Guest Mode: strictly localStorage
     const newTask = {
       id: crypto.randomUUID(),
       title: trimmedTitle,
@@ -105,107 +123,144 @@ function useTasks(isAuthenticated = false) {
       starred: false
     };
 
-    setTasks(prev => [newTask, ...prev]);
+    setGuestTasks(prev => [newTask, ...prev]);
   };
 
   const toggleComplete = async (taskId) => {
-    const target = tasks.find(t => t.id === taskId || t._id === taskId);
-    if (!target) return;
-
-    const updatedCompleted = !target.completed;
-
-    if (isAuthenticated) {
+    if (isAuthenticated && token) {
+      const target = apiTasks.find(t => t.id === taskId || t._id === taskId);
+      if (!target) return;
+      const updatedCompleted = !target.completed;
       try {
         await api.updateTask(target._id || taskId, { completed: updatedCompleted });
+        setApiTasks(prev => prev.map(task =>
+          (task.id === taskId || task._id === taskId)
+            ? { ...task, completed: updatedCompleted }
+            : task
+        ));
       } catch (err) {
-        console.warn('API updateTask failed:', err);
+        console.error('API updateTask failed:', err);
       }
+      return;
     }
 
-    setTasks(prev => prev.map(task =>
+    // Guest Mode: strictly localStorage
+    setGuestTasks(prev => prev.map(task =>
       (task.id === taskId || task._id === taskId)
-        ? { ...task, completed: updatedCompleted }
+        ? { ...task, completed: !task.completed }
         : task
     ));
   };
 
   const deleteTask = async (taskId) => {
-    const target = tasks.find(t => t.id === taskId || t._id === taskId);
-
-    if (isAuthenticated && target) {
-      try {
-        await api.deleteTask(target._id || taskId);
-      } catch (err) {
-        console.warn('API deleteTask failed:', err);
+    if (isAuthenticated && token) {
+      const target = apiTasks.find(t => t.id === taskId || t._id === taskId);
+      if (target) {
+        try {
+          await api.deleteTask(target._id || taskId);
+          setApiTasks(prev => prev.filter(task => (task.id !== taskId && task._id !== taskId)));
+        } catch (err) {
+          console.error('API deleteTask failed:', err);
+        }
       }
+    } else {
+      // Guest Mode: strictly localStorage
+      setGuestTasks(prev => prev.filter(task => (task.id !== taskId && task._id !== taskId)));
     }
 
-    setTasks(prev => prev.filter(task => (task.id !== taskId && task._id !== taskId)));
     if (selectedTaskId === taskId) {
       setSelectedTaskId(null);
     }
   };
 
   const toggleStar = async (taskId) => {
-    const target = tasks.find(t => t.id === taskId || t._id === taskId);
-    if (!target) return;
-
-    const updatedStarred = !target.starred;
-
-    if (isAuthenticated) {
+    if (isAuthenticated && token) {
+      const target = apiTasks.find(t => t.id === taskId || t._id === taskId);
+      if (!target) return;
+      const updatedStarred = !target.starred;
       try {
         await api.updateTask(target._id || taskId, { starred: updatedStarred });
+        setApiTasks(prev => prev.map(task =>
+          (task.id === taskId || task._id === taskId)
+            ? { ...task, starred: updatedStarred }
+            : task
+        ));
       } catch (err) {
-        console.warn('API updateTask failed:', err);
+        console.error('API updateTask failed:', err);
       }
+      return;
     }
 
-    setTasks(prev => prev.map(task =>
+    // Guest Mode: strictly localStorage
+    setGuestTasks(prev => prev.map(task =>
       (task.id === taskId || task._id === taskId)
-        ? { ...task, starred: updatedStarred }
+        ? { ...task, starred: !task.starred }
         : task
     ));
   };
 
-  const addSubtask = (taskId, subtaskTitle) => {
+  const addSubtask = async (taskId, subtaskTitle) => {
     if (!subtaskTitle.trim()) return;
 
-    setTasks(prev => prev.map(task => {
+    const newSubtask = {
+      id: crypto.randomUUID(),
+      title: subtaskTitle.trim(),
+      completed: false
+    };
+
+    if (isAuthenticated && token) {
+      const target = apiTasks.find(t => t.id === taskId || t._id === taskId);
+      if (!target) return;
+      const updatedSubtasks = [...(target.subtasks || []), newSubtask];
+      try {
+        await api.updateTask(target._id || taskId, { subtasks: updatedSubtasks });
+        setApiTasks(prev => prev.map(task =>
+          (task.id === taskId || task._id === taskId)
+            ? { ...task, subtasks: updatedSubtasks }
+            : task
+        ));
+      } catch (err) {
+        console.error('API addSubtask failed:', err);
+      }
+      return;
+    }
+
+    // Guest Mode: strictly localStorage
+    setGuestTasks(prev => prev.map(task => {
       if (task.id === taskId || task._id === taskId) {
-        const updatedSubtasks = [
-          ...task.subtasks,
-          {
-            id: crypto.randomUUID(),
-            title: subtaskTitle.trim(),
-            completed: false
-          }
-        ];
-
-        if (isAuthenticated) {
-          api.updateTask(task._id || taskId, { subtasks: updatedSubtasks })
-            .catch(err => console.warn('API updateTask failed:', err));
-        }
-
+        const updatedSubtasks = [...(task.subtasks || []), newSubtask];
         return { ...task, subtasks: updatedSubtasks };
       }
       return task;
     }));
   };
 
-  const toggleSubtask = (taskId, subtaskId) => {
-    setTasks(prev => prev.map(task => {
+  const toggleSubtask = async (taskId, subtaskId) => {
+    if (isAuthenticated && token) {
+      const target = apiTasks.find(t => t.id === taskId || t._id === taskId);
+      if (!target) return;
+      const updatedSubtasks = (target.subtasks || []).map(st =>
+        st.id === subtaskId ? { ...st, completed: !st.completed } : st
+      );
+      try {
+        await api.updateTask(target._id || taskId, { subtasks: updatedSubtasks });
+        setApiTasks(prev => prev.map(task =>
+          (task.id === taskId || task._id === taskId)
+            ? { ...task, subtasks: updatedSubtasks }
+            : task
+        ));
+      } catch (err) {
+        console.error('API toggleSubtask failed:', err);
+      }
+      return;
+    }
+
+    // Guest Mode: strictly localStorage
+    setGuestTasks(prev => prev.map(task => {
       if (task.id === taskId || task._id === taskId) {
-        const updatedSubtasks = task.subtasks.map(subtask =>
-          subtask.id === subtaskId
-            ? { ...subtask, completed: !subtask.completed }
-            : subtask
+        const updatedSubtasks = (task.subtasks || []).map(st =>
+          st.id === subtaskId ? { ...st, completed: !st.completed } : st
         );
-
-        if (isAuthenticated) {
-          api.updateTask(task._id || taskId, { subtasks: updatedSubtasks })
-            .catch(err => console.warn('API updateTask failed:', err));
-        }
-
         return { ...task, subtasks: updatedSubtasks };
       }
       return task;
@@ -213,15 +268,22 @@ function useTasks(isAuthenticated = false) {
   };
 
   const updateTask = async (taskId, updates) => {
-    if (isAuthenticated) {
+    if (isAuthenticated && token) {
       try {
         await api.updateTask(taskId, updates);
+        setApiTasks(prev => prev.map(task =>
+          (task.id === taskId || task._id === taskId)
+            ? { ...task, ...updates }
+            : task
+        ));
       } catch (err) {
-        console.warn('API updateTask failed:', err);
+        console.error('API updateTask failed:', err);
       }
+      return;
     }
 
-    setTasks(prev => prev.map(task =>
+    // Guest Mode: strictly localStorage
+    setGuestTasks(prev => prev.map(task =>
       (task.id === taskId || task._id === taskId)
         ? { ...task, ...updates }
         : task

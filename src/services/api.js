@@ -1,10 +1,10 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
 
 /**
  * Helper to perform fetch requests with JWT authorization header.
  */
 async function request(endpoint, options = {}) {
-  const token = localStorage.getItem('token');
+  const token = localStorage.getItem('taskflow_auth_token') || localStorage.getItem('token');
 
   const headers = {
     'Content-Type': 'application/json',
@@ -27,7 +27,7 @@ async function request(endpoint, options = {}) {
     return data;
   } catch (error) {
     if (error.name === 'TypeError' && error.message.includes('fetch')) {
-      throw new Error('Cannot connect to backend server. Make sure the Node.js server is running on http://localhost:5000.');
+      throw new Error('Cannot connect to backend server. Make sure the Node.js server is running.');
     }
     throw error;
   }
@@ -55,7 +55,7 @@ export const api = {
       body: JSON.stringify({ darkMode }),
     }),
 
-  // Tasks
+  // Tasks (Protected - Requires JWT)
   getTasks: () => request('/tasks'),
 
   createTask: (title, list, dueDate) =>
@@ -75,7 +75,7 @@ export const api = {
       method: 'DELETE',
     }),
 
-  // Lists
+  // Lists (Protected - Requires JWT)
   getLists: () => request('/lists'),
 
   createList: (name, color) =>

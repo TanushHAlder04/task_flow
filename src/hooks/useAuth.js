@@ -1,26 +1,31 @@
 import { useState, useEffect } from 'react';
 import { api } from '../services/api';
 
+const TOKEN_KEY = 'taskflow_auth_token';
+const USER_KEY = 'taskflow_auth_user';
+
 export function useAuth() {
   const [user, setUser] = useState(() => {
     try {
-      const savedUser = localStorage.getItem('user');
+      const savedUser = localStorage.getItem(USER_KEY) || localStorage.getItem('user');
       return savedUser ? JSON.parse(savedUser) : null;
     } catch {
       return null;
     }
   });
 
-  const [token, setToken] = useState(() => localStorage.getItem('token') || null);
+  const [token, setToken] = useState(() => localStorage.getItem(TOKEN_KEY) || localStorage.getItem('token') || null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
   // Sync token to localStorage
   useEffect(() => {
     if (token) {
-      localStorage.setItem('token', token);
+      localStorage.setItem(TOKEN_KEY, token);
     } else {
+      localStorage.removeItem(TOKEN_KEY);
       localStorage.removeItem('token');
+      localStorage.removeItem(USER_KEY);
       localStorage.removeItem('user');
     }
   }, [token]);
@@ -28,7 +33,7 @@ export function useAuth() {
   // Sync user to localStorage
   useEffect(() => {
     if (user) {
-      localStorage.setItem('user', JSON.stringify(user));
+      localStorage.setItem(USER_KEY, JSON.stringify(user));
     }
   }, [user]);
 
@@ -67,6 +72,8 @@ export function useAuth() {
   const logout = () => {
     setToken(null);
     setUser(null);
+    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(USER_KEY);
     localStorage.removeItem('token');
     localStorage.removeItem('user');
   };

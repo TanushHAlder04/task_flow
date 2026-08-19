@@ -1,5 +1,5 @@
 {
-  "name": "task-flow",
+ "name": "task_flow",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -7,7 +7,8 @@
     "dev": "concurrently -n \"VITE,SERVER\" -c \"cyan,magenta\" \"vite\" \"npm run dev --prefix server\"",
     "client": "vite",
     "server": "npm run dev --prefix server",
-    "build": "vite build",
+    "build": "npm install --prefix server && vite build",
+    "start": "node server/server.js",
     "lint": "eslint .",
     "preview": "vite preview"
   },
