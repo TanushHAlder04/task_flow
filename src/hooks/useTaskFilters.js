@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 
 /**
  * Custom hook for task filtering, searching, and navigation state.
@@ -61,23 +61,6 @@ function useTaskFilters(tasks, lists) {
     return 'Tasks';
   }, [activeSection, filter, selectedList, lists, searchQuery]);
 
-  // Auto-switch section when searching
-  useEffect(() => {
-    if (!searchQuery || searchResults.length === 0) return;
-
-    const task = searchResults[0];
-
-    if (task.dueDate === today) {
-      setFilter('today');
-      setActiveSection('filter');
-    } else if (task.dueDate && task.dueDate > today) {
-      setFilter('upcoming');
-      setActiveSection('filter');
-    } else {
-      setSelectedList(task.list);
-      setActiveSection('list');
-    }
-  }, [searchQuery, searchResults, today]);
 
   // Handle filter selection (clears search)
   const handleFilterClick = (filterType) => {

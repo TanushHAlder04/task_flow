@@ -1,98 +1,165 @@
 # 📝 TaskFlow
 
-A **modern, feature-rich Todo application** built with **React 19** and **Tailwind CSS 4**.  
-Manage your tasks with a beautiful, responsive dashboard-style interface featuring sidebar navigation, task detail panels, dark mode, and localStorage persistence.
+[![Live Demo](https://img.shields.io/badge/Live_Demo-Netlify-00C7B7?style=for-the-badge&logo=netlify&logoColor=white)](https://taskflow3tododev.netlify.app/)
+[![React 19](https://img.shields.io/badge/React-19-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://react.dev/)
+[![Node.js](https://img.shields.io/badge/Node.js-v18+-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)](https://nodejs.org/)
+[![Express](https://img.shields.io/badge/Express-v4-000000?style=for-the-badge&logo=express&logoColor=white)](https://expressjs.com/)
+[![MongoDB](https://img.shields.io/badge/MongoDB-v8-47A248?style=for-the-badge&logo=mongodb&logoColor=white)](https://www.mongodb.com/)
+[![JWT Auth](https://img.shields.io/badge/JWT-Auth-000000?style=for-the-badge&logo=jsonwebtokens&logoColor=white)](https://jwt.io/)
+[![Tailwind CSS 4](https://img.shields.io/badge/Tailwind_CSS-v4.0-06B6D4?style=for-the-badge&logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
+
+A **fullstack, feature-rich Task Management application** built with **React 19**, **Node.js**, **Express**, **MongoDB**, **JWT Authentication**, and **Tailwind CSS 4**.
+Manage your tasks with a beautiful dashboard-style interface featuring sidebar navigation, task detail panels, JWT user accounts, priority reminders, dark mode, and seamless cloud database synchronization.
+
+🔗 **Live Demo:** [https://taskflow3tododev.netlify.app/](https://taskflow3tododev.netlify.app/)
 
 ---
 
-## ✨ Features
+## ✨ Key Features
 
-### 🎯 Core Functionality
+### 🔐 JWT Authentication & Cloud Persistence
+- **User Accounts** — Sign In & Register with email and hashed passwords (`bcryptjs`).
+- **JWT Authorization** — Bearer token authorization header with 30-day session security.
+- **MongoDB Sync** — User preferences (`darkMode`), custom lists, and tasks persist to MongoDB Cloud/Local DB.
+- **Offline/Guest Fallback** — Seamless localStorage mode when unauthenticated.
+
+### 🎯 Core Task Functionality
 - 📌 **Create & Manage Tasks** — Add, edit, delete and manage tasks with ease
 - 🧭 **Smart Filtering** — View tasks by Today, Upcoming, or Custom Lists
-- 📄 **Task Details Panel** — Edit title, description, list assignment, and due dates
+- 📄 **Task Detail Drawer** — Edit title, description, due date, subtasks, tags, and list assignment
 - ✅ **Mark as Complete** — Toggle task completion status
 - ⭐ **Star Important Tasks** — Highlight priority tasks with stars
-- 🔍 **Search Tasks** — Quickly find tasks with intelligent live suggestions
+- 🔍 **Live Search & Filter** — Instant filtering with intelligent live suggestions
 
-### 📋 Organization
-- **Custom Lists** — Create unlimited custom lists with color coding
-- **Today & Upcoming Views** — Automatic filtering based on due dates
+### 📋 Custom List Management & Deletion
+- **Initial Defaults** — Built-in `Personal` and `Work` lists
+- **Create & Delete Custom Lists** — Create custom lists with color coding, and delete custom lists on hover
+- **Safe Task Reassignment** — When a custom list is deleted, tasks are automatically reassigned to the `Personal` list
 - **Task Counts** — Real-time count badges for each section
 - **Overdue Detection** — Visual indicators for overdue tasks
 
-### 🎨 User Experience
-- **Dark Mode** — Beautiful dark theme with persistent preference
+### 🔔 Priority Task Reminders
+- **Header Alert Banner & Bell Badge** — Live reminders for Starred tasks, Urgent tagged tasks, and tasks that are Overdue or Due Today
+- **Instant Dismiss & Selection** — Quick jump to priority tasks directly from the alert banner
+
+### 🎨 Modern UX & Design
+- **Dark & Light Themes** — Synced across user sessions, with persistent preference
 - **Responsive Design** — Works seamlessly on desktop, tablet, and mobile
 - **Smooth Animations** — Polished transitions and hover effects
 - **Keyboard Shortcuts** — Enter to save, Escape to cancel
 - **Custom Dialogs** — Polished confirmation modals (no browser alerts)
-- **Persistent Storage** — All data saved to localStorage
 
 ---
 
 ## 🛠️ Tech Stack
 
-| Technology | Purpose |
-|---|---|
-| **React 19** | UI library |
-| **Vite 7** | Build tool & dev server |
-| **Tailwind CSS 4** | Utility-first CSS framework |
-| **Lucide React** | Icon library |
-| **localStorage API** | Client-side data persistence |
+| Component | Technology | Purpose |
+|---|---|---|
+| **Frontend** | React 19, Vite 7, Tailwind CSS 4 | UI & Client application |
+| **Backend** | Node.js, Express.js | RESTful API Server |
+| **Database** | MongoDB & Mongoose ORM | Persistent Document Database |
+| **Authentication** | JWT (`jsonwebtoken`), `bcryptjs` | Token authentication & password hashing |
+| **Icons** | Lucide React | Modern SVG icons |
+| **Local Persistence** | localStorage API | Offline/guest data persistence |
 
 ---
 
-## 🚀 Getting Started
+## 🚀 Getting Started & Environment Setup
 
-### Prerequisites
-- **Node.js** (v18 or later)
+### 1. Prerequisites
+- **Node.js** (v18 or higher)
 - **npm** (v9 or later)
+- **MongoDB** (Local instance or [MongoDB Atlas](https://www.mongodb.com/cloud/atlas) URI)
 
-### Installation
+### 2. Clone the Repository
 
 ```bash
-# Clone the repository
 git clone https://github.com/TanushHAlder04/task_flow.git
-
-# Navigate to the project
 cd task_flow
+```
 
-# Install dependencies
+### 3. Environment Configuration
+
+**Backend Environment** (`server/.env`):
+```env
+PORT=5000
+MONGODB_URI=mongodb://127.0.0.1:27017/taskflow
+JWT_SECRET=your_secret_jwt_key_here
+```
+
+**Frontend Environment** (`.env`):
+```env
+VITE_API_BASE_URL=/api
+```
+*(Vite automatically proxies `/api` calls directly to the Express server during development)*
+
+### 4. Install Dependencies
+
+```bash
+# Install root (frontend) dependencies
 npm install
 
-# Start the development server
+# Install server dependencies
+cd server && npm install && cd ..
+```
+
+### 5. Run the App
+
+```bash
 npm run dev
 ```
 
-The app will be available at `http://localhost:5173`.
+`concurrently` runs both the Vite React app (`http://localhost:5173`) and the Express API (`http://localhost:5000`) simultaneously in the same terminal. All `/api` requests are seamlessly handled through the Vite development proxy.
+
+> **Note:** If you skip the backend/database setup, the app still works fully in **offline/guest mode**, storing everything in your browser's localStorage.
 
 ---
 
-## 📂 Project Structure
+## 📂 Project Architecture
 
 ```
 task_flow/
-├── public/
-│   └── todo-list-svgrepo-com.svg   # Favicon
-├── src/
+├── server/                       # Node.js + Express Backend
+│   ├── config/
+│   │   └── db.js                 # MongoDB Mongoose Connection
+│   ├── middleware/
+│   │   └── authMiddleware.js     # JWT Bearer Token Guard
+│   ├── models/
+│   │   ├── User.js               # User Schema (name, email, password, darkMode)
+│   │   ├── Task.js               # Task Schema (subtasks, tags, starred, list, dueDate)
+│   │   └── List.js               # Custom List Schema (listId, name, color)
+│   ├── routes/
+│   │   ├── auth.js               # Register, Login, Me, Theme routes
+│   │   ├── tasks.js              # Task CRUD routes
+│   │   └── lists.js              # List CRUD & Deletion routes
+│   ├── .env.example
+│   └── server.js                 # Express app entry point
+├── src/                          # React Frontend
 │   ├── components/
-│   │   ├── ConfirmDialog.jsx       # Custom confirmation modal
-│   │   ├── Header.jsx              # Header with title & dark mode toggle
-│   │   ├── Sidebar.jsx             # Sidebar navigation & search
-│   │   ├── TaskDetail.jsx          # Task detail/edit panel
-│   │   └── TaskList.jsx            # Task list with cards
+│   │   ├── AuthModal.jsx         # Login & Register Modal
+│   │   ├── PriorityReminders.jsx # Priority Reminders Banner
+│   │   ├── ConfirmDialog.jsx     # Custom confirmation modal
+│   │   ├── Header.jsx            # Header with Auth, Bell & Theme toggle
+│   │   ├── Sidebar.jsx           # Sidebar navigation, search & list deletion
+│   │   ├── TaskDetail.jsx        # Task detail/edit panel
+│   │   └── TaskList.jsx          # Task list with cards
 │   ├── context/
-│   │   └── AppContext.jsx          # Central state provider
+│   │   └── AppContext.jsx        # Central state provider
+│   ├── services/
+│   │   └── api.js                # API Client with JWT Authorization headers
 │   ├── hooks/
-│   │   ├── useLocalStorage.js      # localStorage sync with error handling
-│   │   ├── useLists.js             # List state & operations
-│   │   ├── useTaskFilters.js       # Filtering, search & navigation
-│   │   ├── useTasks.js             # Task CRUD operations
-│   │   └── useTheme.js             # Dark mode management
-│   ├── App.jsx                     # Main layout component
-│   ├── index.css                   # Global styles & scrollbar
-│   └── main.jsx                    # Entry point
+│   │   ├── useAuth.js            # Authentication Hook
+│   │   ├── useAppContext.js      # Context Hook
+│   │   ├── useLocalStorage.js    # localStorage sync with error handling
+│   │   ├── useLists.js           # List state, operations & deletion logic
+│   │   ├── useTaskFilters.js     # Filtering, search & navigation
+│   │   ├── useTasks.js           # Task CRUD & API sync Hook
+│   │   └── useTheme.js           # Dark mode management
+│   ├── App.jsx                   # Main layout component
+│   ├── index.css                 # Global styles & scrollbar
+│   └── main.jsx                  # Entry point
+├── public/
+│   └── todo-list-svgrepo-com.svg # Favicon
 ├── index.html
 ├── package.json
 └── vite.config.js
@@ -112,30 +179,40 @@ task_flow/
    - No date (if in a List view)
 
 ### Editing Tasks
-1. Click on any task to open the details panel
-2. Edit the title, description, list, or due date
+1. Click on any task to open the task detail drawer
+2. Edit the title, description, list, due date, subtasks, or tags
 3. Click **"Save Changes"** to update
 4. The panel will automatically close
 
 ### Managing Lists
 1. In the sidebar, scroll to the **Lists** section
-2. Click **"Add New List"**
-3. Enter a list name and press **Enter**
-4. New lists get a random color automatically
+2. Click **"Add New List"**, enter a name, and press **Enter** — new lists get a random color automatically
+3. Hover over a custom list to reveal the delete option
+4. Deleting a list automatically reassigns its tasks to **Personal**
 
 ### Filtering Tasks
 - **Today** — Shows tasks due today
 - **Upcoming** — Shows tasks with future due dates
-- **Lists** — View tasks by specific list
+- **Lists** — View tasks by specific list (default `Personal` / `Work`, plus any custom lists)
+
+### Priority Reminders
+- Check the bell icon or alert banner in the header for Starred, Urgent, Overdue, or Due Today tasks
+- Click a reminder to jump straight to that task, or dismiss it instantly
 
 ### Search
 1. Type in the search box in the sidebar
 2. See live suggestions as you type
-3. Click a suggestion to select it
-4. The app automatically switches to the relevant section
+3. Click a suggestion to select it — the app automatically switches to the relevant section
+
+### Authentication
+- Click **Sign In / Register** in the header to create a JWT-secured account
+- Signed-in users get their tasks, lists, and dark mode preference synced to MongoDB
+- Without signing in, the app falls back to local, browser-only storage
 
 ### Dark Mode
-Click the sun/moon icon in the header to toggle between light and dark modes. Your preference is saved automatically.
+Click the sun/moon icon in the header to toggle between light and dark modes. Your preference is saved automatically (synced to your account if signed in, or to localStorage otherwise).
+
+---
 
 ## ⌨️ Keyboard Shortcuts
 
@@ -144,27 +221,12 @@ Click the sun/moon icon in the header to toggle between light and dark modes. Yo
 | `Enter` | Save/Add task |
 | `Escape` | Cancel current action |
 
-## 💾 Data Persistence
-
-All data is automatically saved to your browser's localStorage:
-- Tasks
-- Custom lists
-- Dark mode preference
-
-Your data persists across browser sessions unless you clear your browser data.
-
 ---
 
-## 📦 Dependencies
+## 💾 Data Persistence
 
-```json
-{
-  "react": "^19.2.0",
-  "react-dom": "^19.2.0",
-  "lucide-react": "^0.562.0",
-  "tailwindcss": "^4.1.18"
-}
-```
+- **Signed-in users:** Tasks, custom lists, and dark mode preference sync to **MongoDB** via the Express API, accessible across devices.
+- **Guest/offline users:** All data is automatically saved to your browser's **localStorage** and persists across sessions unless you clear your browser data.
 
 ---
 
@@ -172,14 +234,18 @@ Your data persists across browser sessions unless you clear your browser data.
 
 ### Custom Hooks
 The app uses a clean separation of concerns with custom hooks:
+- **`useAuth`** — Authentication state, JWT token handling, and session management
 - **`useLocalStorage`** — Reusable localStorage sync with error handling
-- **`useTasks`** — All task CRUD operations and state
-- **`useLists`** — List management with computed task counts
+- **`useTasks`** — Task CRUD operations, including MongoDB API sync
+- **`useLists`** — List management with computed task counts and deletion/reassignment logic
 - **`useTaskFilters`** — Filtering, search, and navigation logic
 - **`useTheme`** — Dark mode state and DOM class toggling
 
 ### Context API
 A single `AppContext` composes all hooks and provides state to the component tree, eliminating prop drilling across components.
+
+### Backend
+A lightweight Express REST API secured with JWT bearer tokens handles authentication, task CRUD, and list CRUD/deletion, backed by MongoDB via Mongoose.
 
 ---
 
@@ -192,11 +258,7 @@ This project is licensed under the MIT License.
 **Tanush Halder**
 - GitHub: [TanushHAlder04](https://github.com/TanushHAlder04)
 
-## 🙏 Acknowledgments
 
-- Icons by [Lucide](https://lucide.dev/)
-- UI inspiration from modern todo applications
-- Built with ❤️ using React and Tailwind CSS
 
 ---
 

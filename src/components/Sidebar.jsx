@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
-import { Search, ChevronRight, Calendar, Plus, X } from 'lucide-react';
-import { useAppContext } from '../context/AppContext';
+import { Search, ChevronRight, Calendar, Plus, X, Trash2 } from 'lucide-react';
+import { useAppContext } from '../hooks/useAppContext';
+import ConfirmDialog from './ConfirmDialog';
 
 const Sidebar = () => {
   const {
@@ -15,6 +16,7 @@ const Sidebar = () => {
     tasks,
     selectedList,
     addList,
+    deleteList,
     handleFilterClick,
     handleListClick
   } = useAppContext();
@@ -22,6 +24,9 @@ const Sidebar = () => {
   const [showNewList, setShowNewList] = useState(false);
   const [newListName, setNewListName] = useState('');
   const [showSuggestions, setShowSuggestions] = useState(false);
+
+  // List deletion state
+  const [listToDelete, setListToDelete] = useState(null);
 
   const today = new Date().toISOString().split('T')[0];
 
@@ -55,263 +60,292 @@ const Sidebar = () => {
     setShowSuggestions(false);
   };
 
-  // Determine if "Today" filter is active
+  // Confirm delete list
+  const confirmDeleteList = () => {
+    if (listToDelete) {
+      deleteList(listToDelete.id);
+      if (selectedList === listToDelete.id) {
+        handleFilterClick('today');
+      }
+      setListToDelete(null);
+    }
+  };
+
+  // Determine active states
   const isTodayActive = activeSection === 'filter' && filter === 'today';
   const isUpcomingActive = activeSection === 'filter' && filter === 'upcoming';
 
   return (
-    <div 
-      className={`
-        fixed left-0 top-0 h-full 
-        ${darkMode ? 'bg-gray-900' : 'bg-white'} 
-        shadow-2xl transition-all duration-300 z-40 
-        ${sidebarOpen ? 'w-72' : 'w-0'} 
-        overflow-hidden
-      `}
-    >
-      <div className="p-6 h-full overflow-y-auto">
-        {/* Header */}
-        <header className="flex items-center justify-between mb-8">
-          <h1 className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-gray-800'}`}>
-            Menu
-          </h1>
-          <button 
-            onClick={() => setSidebarOpen(false)}
-            className={`
-              p-1 rounded-lg transition-colors
-              ${darkMode 
-                ? 'hover:bg-gray-800 text-gray-300 hover:text-white' 
-                : 'hover:bg-gray-100 text-gray-600 hover:text-gray-800'
-              }
-            `}
-            aria-label="Close sidebar"
-          >
-            <X size={24} />
-          </button>
-        </header>
-
-        {/* Search */}
-        <div className="relative mb-6">
-          <Search 
-            className={`absolute left-3 top-3 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`} 
-            size={18} 
-          />
-          <input
-            type="text"
-            placeholder="Search Tasks"
-            value={searchQuery}
-            onChange={(e) => {
-              setSearchQuery(e.target.value);
-              setShowSuggestions(true);
-            }}
-            onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
-            className={`
-              w-full pl-10 pr-4 py-2.5 rounded-lg 
-              transition-all focus:outline-none focus:ring-2 focus:ring-blue-500
-              ${darkMode 
-                ? 'bg-gray-800 text-white placeholder-gray-500 border border-gray-700' 
-                : 'bg-gray-100 text-gray-900 placeholder-gray-500'
-              }
-            `}
-          />
-          
-          {/* Search Suggestions */}
-          {showSuggestions && searchQuery && searchSuggestions.length > 0 && (
-            <div 
+    <>
+      <div 
+        className={`
+          fixed left-0 top-0 h-full 
+          ${darkMode ? 'bg-gray-900' : 'bg-white'} 
+          shadow-2xl transition-all duration-300 z-40 
+          ${sidebarOpen ? 'w-72' : 'w-0'} 
+          overflow-hidden
+        `}
+      >
+        <div className="p-6 h-full overflow-y-auto">
+          {/* Header */}
+          <header className="flex items-center justify-between mb-8">
+            <h1 className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-gray-800'}`}>
+              Menu
+            </h1>
+            <button 
+              onClick={() => setSidebarOpen(false)}
               className={`
-                absolute top-full mt-2 w-full rounded-lg shadow-lg 
-                max-h-48 overflow-auto z-50
-                ${darkMode ? 'bg-gray-800 border border-gray-700' : 'bg-white'}
-              `}
-            >
-              {searchSuggestions.map(task => (
-                <button
-                  key={task.id}
-                  onClick={() => handleSuggestionClick(task.title)}
-                  className={`
-                    w-full text-left px-4 py-2.5 transition-colors
-                    ${darkMode 
-                      ? 'hover:bg-gray-700 text-gray-200' 
-                      : 'hover:bg-gray-100 text-gray-800'
-                    }
-                  `}
-                >
-                  {task.title}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Tasks Section */}
-        <section className="mb-6">
-          <h3 className={`
-            text-xs font-semibold uppercase mb-3
-            ${darkMode ? 'text-gray-500' : 'text-gray-500'}
-          `}>
-            Tasks
-          </h3>
-          <div className="space-y-2">
-            {/* Today */}
-            <button
-              onClick={() => handleFilterClick('today')}
-              className={`
-                w-full flex items-center justify-between px-3 py-2.5 rounded-lg 
-                transition-all
-                ${isTodayActive
-                  ? darkMode
-                    ? 'bg-blue-900/50 text-blue-300'
-                    : 'bg-blue-100 text-blue-700'
-                  : darkMode
-                    ? 'hover:bg-gray-800 text-gray-300'
-                    : 'hover:bg-gray-100 text-gray-700'
+                p-1 rounded-lg transition-colors
+                ${darkMode 
+                  ? 'hover:bg-gray-800 text-gray-300 hover:text-white' 
+                  : 'hover:bg-gray-100 text-gray-600 hover:text-gray-800'
                 }
               `}
+              aria-label="Close sidebar"
             >
-              <div className="flex items-center gap-2">
-                <Calendar size={16} />
-                <span className="font-medium">Today</span>
-              </div>
-              <span className={`
-                text-sm px-2 py-0.5 rounded-full
-                ${isTodayActive
-                  ? darkMode ? 'bg-blue-800 text-blue-200' : 'bg-blue-200 text-blue-700'
-                  : darkMode ? 'bg-gray-800 text-gray-400' : 'bg-gray-200 text-gray-600'
-                }
-              `}>
-                {taskCounts.today}
-              </span>
+              <X size={24} />
             </button>
+          </header>
 
-            {/* Upcoming */}
-            <button
-              onClick={() => handleFilterClick('upcoming')}
-              className={`
-                w-full flex items-center justify-between px-3 py-2.5 rounded-lg 
-                transition-all
-                ${isUpcomingActive
-                  ? darkMode
-                    ? 'bg-blue-900/50 text-blue-300'
-                    : 'bg-blue-100 text-blue-700'
-                  : darkMode
-                    ? 'hover:bg-gray-800 text-gray-300'
-                    : 'hover:bg-gray-100 text-gray-700'
-                }
-              `}
-            >
-              <div className="flex items-center gap-2">
-                <ChevronRight size={16} />
-                <span className="font-medium">Upcoming</span>
-              </div>
-              <span className={`
-                text-sm px-2 py-0.5 rounded-full
-                ${isUpcomingActive
-                  ? darkMode ? 'bg-blue-800 text-blue-200' : 'bg-blue-200 text-blue-700'
-                  : darkMode ? 'bg-gray-800 text-gray-400' : 'bg-gray-200 text-gray-600'
-                }
-              `}>
-                {taskCounts.upcoming}
-              </span>
-            </button>
-          </div>
-        </section>
-
-        {/* Lists Section */}
-        <section className="mb-6">
-          <h3 className={`
-            text-xs font-semibold uppercase mb-3
-            ${darkMode ? 'text-gray-500' : 'text-gray-500'}
-          `}>
-            Lists
-          </h3>
-          <div className="space-y-2">
-            {listsWithCount.map(list => {
-              const isListActive = activeSection === 'list' && selectedList === list.id;
-              return (
-                <button
-                  key={list.id}
-                  onClick={() => handleListClick(list.id)}
-                  className={`
-                    w-full flex items-center justify-between px-3 py-2.5 rounded-lg
-                    transition-all
-                    ${isListActive
-                      ? darkMode
-                        ? 'bg-blue-900/50 text-blue-300'
-                        : 'bg-blue-100 text-blue-700'
-                      : darkMode
-                        ? 'hover:bg-gray-800 text-gray-300'
-                        : 'hover:bg-gray-100 text-gray-700'
-                    }
-                  `}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className={`w-3 h-3 rounded-full ${list.color}`}></div>
-                    <span className="font-medium">{list.name}</span>
-                  </div>
-                  <span className={`
-                    text-sm px-2 py-0.5 rounded-full
-                    ${isListActive
-                      ? darkMode ? 'bg-blue-800 text-blue-200' : 'bg-blue-200 text-blue-700'
-                      : darkMode ? 'bg-gray-800 text-gray-400' : 'bg-gray-200 text-gray-600'
-                    }
-                  `}>
-                    {list.count}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        </section>
-
-        {/* Add New List */}
-        {showNewList ? (
-          <div className="flex gap-2">
+          {/* Search */}
+          <div className="relative mb-6">
+            <Search 
+              className={`absolute left-3 top-3 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`} 
+              size={18} 
+            />
             <input
-              value={newListName}
-              onChange={(e) => setNewListName(e.target.value)}
-              placeholder="List name"
+              type="text"
+              placeholder="Search Tasks"
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setShowSuggestions(true);
+              }}
+              onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
               className={`
-                flex-1 px-3 py-2.5 rounded-lg 
-                focus:outline-none focus:ring-2 focus:ring-blue-500
+                w-full pl-10 pr-4 py-2.5 rounded-lg 
+                transition-all focus:outline-none focus:ring-2 focus:ring-blue-500
                 ${darkMode 
                   ? 'bg-gray-800 text-white placeholder-gray-500 border border-gray-700' 
                   : 'bg-gray-100 text-gray-900 placeholder-gray-500'
                 }
               `}
-              autoFocus
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') handleCreateList();
-                if (e.key === 'Escape') {
-                  setShowNewList(false);
-                  setNewListName('');
-                }
-              }}
             />
-            <button
-              onClick={handleCreateList}
-              className="px-4 py-2.5 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors font-medium"
-            >
-              Add
-            </button>
+            
+            {/* Search Suggestions */}
+            {showSuggestions && searchQuery && searchSuggestions.length > 0 && (
+              <div 
+                className={`
+                  absolute top-full mt-2 w-full rounded-lg shadow-lg 
+                  max-h-48 overflow-auto z-50
+                  ${darkMode ? 'bg-gray-800 border border-gray-700' : 'bg-white'}
+                `}
+              >
+                {searchSuggestions.map(task => (
+                  <button
+                    key={task.id || task._id}
+                    onClick={() => handleSuggestionClick(task.title)}
+                    className={`
+                      w-full text-left px-4 py-2.5 transition-colors
+                      ${darkMode 
+                        ? 'hover:bg-gray-700 text-gray-200' 
+                        : 'hover:bg-gray-100 text-gray-800'
+                      }
+                    `}
+                  >
+                    {task.title}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
-        ) : (
-          <button
-            onClick={() => setShowNewList(true)}
-            className={`
-              w-full flex items-center gap-2 px-3 py-2.5 rounded-lg 
-              transition-colors
-              ${darkMode 
-                ? 'hover:bg-gray-800 text-gray-400 hover:text-gray-300' 
-                : 'hover:bg-gray-100 text-gray-500 hover:text-gray-700'
-              }
-            `}
-          >
-            <Plus size={16} />
-            <span className="font-medium">Add New List</span>
-          </button>
-        )}
+
+          {/* Tasks Section */}
+          <section className="mb-6">
+            <h3 className="text-xs font-semibold uppercase mb-3 text-gray-500">
+              Tasks
+            </h3>
+            <div className="space-y-2">
+              {/* Today */}
+              <button
+                onClick={() => handleFilterClick('today')}
+                className={`
+                  w-full flex items-center justify-between px-3 py-2.5 rounded-lg 
+                  transition-all
+                  ${isTodayActive
+                    ? darkMode ? 'bg-blue-900/50 text-blue-300' : 'bg-blue-100 text-blue-700'
+                    : darkMode ? 'hover:bg-gray-800 text-gray-300' : 'hover:bg-gray-100 text-gray-700'
+                  }
+                `}
+              >
+                <div className="flex items-center gap-2">
+                  <Calendar size={16} />
+                  <span className="font-medium">Today</span>
+                </div>
+                <span className={`
+                  text-sm px-2 py-0.5 rounded-full
+                  ${isTodayActive
+                    ? darkMode ? 'bg-blue-800 text-blue-200' : 'bg-blue-200 text-blue-700'
+                    : darkMode ? 'bg-gray-800 text-gray-400' : 'bg-gray-200 text-gray-600'
+                  }
+                `}>
+                  {taskCounts.today}
+                </span>
+              </button>
+
+              {/* Upcoming */}
+              <button
+                onClick={() => handleFilterClick('upcoming')}
+                className={`
+                  w-full flex items-center justify-between px-3 py-2.5 rounded-lg 
+                  transition-all
+                  ${isUpcomingActive
+                    ? darkMode ? 'bg-blue-900/50 text-blue-300' : 'bg-blue-100 text-blue-700'
+                    : darkMode ? 'hover:bg-gray-800 text-gray-300' : 'hover:bg-gray-100 text-gray-700'
+                  }
+                `}
+              >
+                <div className="flex items-center gap-2">
+                  <ChevronRight size={16} />
+                  <span className="font-medium">Upcoming</span>
+                </div>
+                <span className={`
+                  text-sm px-2 py-0.5 rounded-full
+                  ${isUpcomingActive
+                    ? darkMode ? 'bg-blue-800 text-blue-200' : 'bg-blue-200 text-blue-700'
+                    : darkMode ? 'bg-gray-800 text-gray-400' : 'bg-gray-200 text-gray-600'
+                  }
+                `}>
+                  {taskCounts.upcoming}
+                </span>
+              </button>
+            </div>
+          </section>
+
+          {/* Lists Section */}
+          <section className="mb-6">
+            <h3 className="text-xs font-semibold uppercase mb-3 text-gray-500">
+              Lists
+            </h3>
+            <div className="space-y-2">
+              {listsWithCount.map(list => {
+                const isListActive = activeSection === 'list' && selectedList === list.id;
+                const isDeletable = list.id !== 'personal' && list.id !== 'work';
+
+                return (
+                  <div
+                    key={list.id}
+                    className={`
+                      group flex items-center justify-between px-3 py-2.5 rounded-lg
+                      transition-all cursor-pointer
+                      ${isListActive
+                        ? darkMode ? 'bg-blue-900/50 text-blue-300' : 'bg-blue-100 text-blue-700'
+                        : darkMode ? 'hover:bg-gray-800 text-gray-300' : 'hover:bg-gray-100 text-gray-700'
+                      }
+                    `}
+                    onClick={() => handleListClick(list.id)}
+                  >
+                    <div className="flex items-center gap-3 truncate">
+                      <div className={`w-3 h-3 rounded-full shrink-0 ${list.color}`}></div>
+                      <span className="font-medium truncate">{list.name}</span>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <span className={`
+                        text-sm px-2 py-0.5 rounded-full
+                        ${isListActive
+                          ? darkMode ? 'bg-blue-800 text-blue-200' : 'bg-blue-200 text-blue-700'
+                          : darkMode ? 'bg-gray-800 text-gray-400' : 'bg-gray-200 text-gray-600'
+                        }
+                      `}>
+                        {list.count}
+                      </span>
+
+                      {/* Delete custom list button */}
+                      {isDeletable && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setListToDelete(list);
+                          }}
+                          className={`
+                            p-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity
+                            ${darkMode 
+                              ? 'hover:bg-gray-700 text-red-400' 
+                              : 'hover:bg-red-50 text-red-500'
+                            }
+                          `}
+                          aria-label={`Delete list ${list.name}`}
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+
+          {/* Add New List */}
+          {showNewList ? (
+            <div className="flex gap-2">
+              <input
+                value={newListName}
+                onChange={(e) => setNewListName(e.target.value)}
+                placeholder="List name"
+                className={`
+                  flex-1 px-3 py-2.5 rounded-lg 
+                  focus:outline-none focus:ring-2 focus:ring-blue-500
+                  ${darkMode 
+                    ? 'bg-gray-800 text-white placeholder-gray-500 border border-gray-700' 
+                    : 'bg-gray-100 text-gray-900 placeholder-gray-500'
+                  }
+                `}
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleCreateList();
+                  if (e.key === 'Escape') {
+                    setShowNewList(false);
+                    setNewListName('');
+                  }
+                }}
+              />
+              <button
+                onClick={handleCreateList}
+                className="px-4 py-2.5 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors font-medium"
+              >
+                Add
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => setShowNewList(true)}
+              className={`
+                w-full flex items-center gap-2 px-3 py-2.5 rounded-lg 
+                transition-colors
+                ${darkMode 
+                  ? 'hover:bg-gray-800 text-gray-400 hover:text-gray-300' 
+                  : 'hover:bg-gray-100 text-gray-500 hover:text-gray-700'
+                }
+              `}
+            >
+              <Plus size={16} />
+              <span className="font-medium">Add New List</span>
+            </button>
+          )}
+        </div>
       </div>
-    </div>
+
+      {/* Delete List Confirmation Dialog */}
+      {listToDelete && (
+        <ConfirmDialog
+          message={`Are you sure you want to delete the list "${listToDelete.name}"? Tasks in this list will be reassigned to Personal.`}
+          onConfirm={confirmDeleteList}
+          onCancel={() => setListToDelete(null)}
+        />
+      )}
+    </>
   );
 };
 

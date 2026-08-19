@@ -1,5 +1,5 @@
 import { Check, Calendar, Star, ChevronRight, CheckCircle2 } from 'lucide-react';
-import { useAppContext } from '../context/AppContext';
+import { useAppContext } from '../hooks/useAppContext';
 
 const TaskList = ({ tasks }) => {
   const {
@@ -72,20 +72,23 @@ const TaskList = ({ tasks }) => {
   return (
     <div className="space-y-3">
       {tasks.map((task) => {
+        const taskId = task.id || task._id;
         const overdueTask = !task.completed && isOverdue(task.dueDate);
-        const completedSubtasks = task.subtasks.filter(st => st.completed).length;
-        const totalSubtasks = task.subtasks.length;
+        const subtasks = task.subtasks || [];
+        const tags = task.tags || [];
+        const completedSubtasks = subtasks.filter(st => st.completed).length;
+        const totalSubtasks = subtasks.length;
         
         return (
           <div
-            key={task.id}
-            onClick={() => selectTask(task.id)}
+            key={taskId}
+            onClick={() => selectTask(taskId)}
             className={`
               rounded-xl p-4 cursor-pointer 
               transition-all duration-200 shadow-md
               transform hover:-translate-y-0.5
               ${darkMode 
-                ? 'bg-gray-900 hover:bg-gray-850 border border-gray-800 hover:border-gray-700' 
+                ? 'bg-gray-900 hover:bg-gray-800 border border-gray-800 hover:border-gray-700' 
                 : 'bg-white hover:shadow-xl'
               }
               ${task.completed ? 'opacity-75' : ''}
@@ -96,7 +99,7 @@ const TaskList = ({ tasks }) => {
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  toggleComplete(task.id);
+                  toggleComplete(taskId);
                 }}
                 className={`
                   mt-0.5 w-5 h-5 rounded-md border-2 
@@ -155,12 +158,8 @@ const TaskList = ({ tasks }) => {
                     <span className={`
                       px-2 py-0.5 rounded-md font-medium
                       ${completedSubtasks === totalSubtasks
-                        ? darkMode
-                          ? 'bg-green-900/30 text-green-400'
-                          : 'bg-green-100 text-green-700'
-                        : darkMode
-                          ? 'bg-gray-800 text-gray-400'
-                          : 'bg-gray-100 text-gray-600'
+                        ? darkMode ? 'bg-green-900/30 text-green-400' : 'bg-green-100 text-green-700'
+                        : darkMode ? 'bg-gray-800 text-gray-400' : 'bg-gray-100 text-gray-600'
                       }
                     `}>
                       {completedSubtasks}/{totalSubtasks} subtasks
@@ -179,9 +178,9 @@ const TaskList = ({ tasks }) => {
                   </div>
 
                   {/* Tags */}
-                  {task.tags && task.tags.length > 0 && (
+                  {tags.length > 0 && (
                     <div className="flex gap-1 flex-wrap">
-                      {task.tags.slice(0, 2).map((tag, index) => (
+                      {tags.slice(0, 2).map((tag, index) => (
                         <span
                           key={index}
                           className={`
@@ -195,12 +194,12 @@ const TaskList = ({ tasks }) => {
                           #{tag}
                         </span>
                       ))}
-                      {task.tags.length > 2 && (
+                      {tags.length > 2 && (
                         <span className={`
                           text-xs
                           ${darkMode ? 'text-gray-500' : 'text-gray-400'}
                         `}>
-                          +{task.tags.length - 2}
+                          +{tags.length - 2}
                         </span>
                       )}
                     </div>
@@ -212,7 +211,7 @@ const TaskList = ({ tasks }) => {
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  toggleStar(task.id);
+                  toggleStar(taskId);
                 }}
                 className={`
                   mt-0.5 p-1 rounded-lg transition-all shrink-0

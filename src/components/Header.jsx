@@ -1,5 +1,5 @@
-import { Menu, Sun, Moon, Filter } from 'lucide-react';
-import { useAppContext } from '../context/AppContext';
+import { Menu, Sun, Moon, Bell, LogIn, LogOut, User } from 'lucide-react';
+import { useAppContext } from '../hooks/useAppContext';
 
 const Header = () => {
   const {
@@ -8,7 +8,12 @@ const Header = () => {
     sidebarOpen,
     setSidebarOpen,
     sectionTitle,
-    filteredTasks
+    filteredTasks,
+    auth,
+    setShowAuthModal,
+    showPriorityReminders,
+    setShowPriorityReminders,
+    priorityCount
   } = useAppContext();
 
   return (
@@ -17,6 +22,7 @@ const Header = () => {
       shadow-sm sticky top-0 z-30
     `}>
       <div className="px-6 py-4 flex items-center justify-between">
+        {/* Left Section */}
         <div className="flex items-center gap-4">
           {!sidebarOpen && (
             <button 
@@ -49,19 +55,30 @@ const Header = () => {
           </span>
         </div>
         
+        {/* Right Section */}
         <div className="flex items-center gap-3">
-          <button 
+          {/* Priority Notification Bell */}
+          <button
+            onClick={() => setShowPriorityReminders(prev => !prev)}
             className={`
-              p-2 rounded-lg transition-colors
-              ${darkMode 
-                ? 'hover:bg-gray-800 text-gray-300' 
-                : 'hover:bg-gray-100 text-gray-600'
+              relative p-2 rounded-lg transition-colors
+              ${showPriorityReminders
+                ? darkMode ? 'bg-amber-500/20 text-amber-400' : 'bg-amber-100 text-amber-700'
+                : darkMode ? 'hover:bg-gray-800 text-gray-300' : 'hover:bg-gray-100 text-gray-600'
               }
             `}
-            aria-label="Filter tasks"
+            aria-label="Toggle priority reminders"
+            title="Priority Task Reminders"
           >
-            <Filter size={20} />
+            <Bell size={20} />
+            {priorityCount > 0 && (
+              <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-amber-500 text-white text-xs font-bold flex items-center justify-center animate-pulse">
+                {priorityCount}
+              </span>
+            )}
           </button>
+
+          {/* Theme Toggle */}
           <button
             onClick={toggleDarkMode}
             className={`
@@ -75,6 +92,37 @@ const Header = () => {
           >
             {darkMode ? <Sun size={20} /> : <Moon size={20} />}
           </button>
+
+          {/* User Auth Profile / Login Button */}
+          {auth.isAuthenticated ? (
+            <div className="flex items-center gap-2 pl-2 border-l border-gray-300 dark:border-gray-800">
+              <div className={`
+                flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-semibold
+                ${darkMode ? 'bg-gray-800 text-gray-200' : 'bg-gray-100 text-gray-800'}
+              `}>
+                <User size={16} className="text-blue-500" />
+                <span className="max-w-28 truncate">{auth.user.name}</span>
+              </div>
+              <button
+                onClick={auth.logout}
+                className={`
+                  p-2 rounded-lg transition-colors text-red-500 hover:bg-red-500/10
+                `}
+                aria-label="Logout"
+                title="Sign Out"
+              >
+                <LogOut size={18} />
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => setShowAuthModal(true)}
+              className="flex items-center gap-2 px-3 py-2 rounded-lg font-semibold bg-linear-to-r from-blue-500 to-indigo-600 text-white hover:shadow-md transition-all text-sm"
+            >
+              <LogIn size={16} />
+              <span>Sign In</span>
+            </button>
+          )}
         </div>
       </div>
     </header>

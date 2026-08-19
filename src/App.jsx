@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import { Plus } from 'lucide-react';
-import { useAppContext } from './context/AppContext';
+import { useAppContext } from './hooks/useAppContext';
 import Header from './components/Header';
 import Sidebar from './components/Sidebar';
 import TaskList from './components/TaskList';
 import TaskDetail from './components/TaskDetail';
+import AuthModal from './components/AuthModal';
+import PriorityReminders from './components/PriorityReminders';
 
 function App() {
   const {
@@ -15,6 +17,10 @@ function App() {
     selectedList,
     filteredTasks,
     addTask,
+    showAuthModal,
+    setShowAuthModal,
+    showPriorityReminders,
+    setShowPriorityReminders
   } = useAppContext();
 
   // New task form state (local to this component)
@@ -22,6 +28,7 @@ function App() {
   const [newTaskTitle, setNewTaskTitle] = useState('');
 
   const handleAddTask = () => {
+    if (!newTaskTitle.trim()) return;
     addTask(newTaskTitle, activeSection, filter, selectedList);
     setNewTaskTitle('');
     setShowNewTask(false);
@@ -39,8 +46,8 @@ function App() {
   return (
     <div className={`min-h-screen transition-colors duration-300 ${
       darkMode 
-        ? 'bg-gray-950' 
-        : 'bg-linear-to-br from-blue-50 via-indigo-50 to-purple-50'
+        ? 'bg-gray-950 text-white' 
+        : 'bg-linear-to-br from-blue-50 via-indigo-50 to-purple-50 text-gray-900'
     }`}>
       {/* Sidebar */}
       <Sidebar />
@@ -50,8 +57,14 @@ function App() {
         {/* Header */}
         <Header />
 
-        {/* Tasks Grid */}
+        {/* Tasks Container */}
         <div className="p-6 max-w-7xl mx-auto">
+          {/* Priority Task Reminders Banner */}
+          <PriorityReminders 
+            isOpen={showPriorityReminders} 
+            onClose={() => setShowPriorityReminders(false)} 
+          />
+
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Tasks Column */}
             <div className="lg:col-span-2 space-y-3">
@@ -132,6 +145,12 @@ function App() {
           </div>
         </div>
       </div>
+
+      {/* User Login/Register Modal */}
+      <AuthModal 
+        isOpen={showAuthModal} 
+        onClose={() => setShowAuthModal(false)} 
+      />
     </div>
   );
 }

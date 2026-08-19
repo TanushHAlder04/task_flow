@@ -1,42 +1,35 @@
-import { useState, useEffect } from 'react';
-import { X, Trash2, Calendar, List, FileText, Star } from 'lucide-react';
-import { useAppContext } from '../context/AppContext';
+import { useState } from 'react';
+import { X, Trash2, Calendar, List, FileText, Star, CheckSquare, Tag, Plus, Check } from 'lucide-react';
+import { useAppContext } from '../hooks/useAppContext';
 import ConfirmDialog from './ConfirmDialog';
 
-const TaskDetail = () => {
+/**
+ * Inner editor component — remounts via key={task.id}
+ * so local state auto-resets without useEffect.
+ */
+const TaskDetailEditor = ({ task }) => {
   const {
     darkMode,
-    selectedTask: task,
     clearSelectedTask,
     deleteTask,
     updateTask,
     lists
   } = useAppContext();
 
-  // Local state for editing
   const [editedTask, setEditedTask] = useState({
-    title: '',
-    description: '',
-    list: '',
-    dueDate: ''
+    title: task.title || '',
+    description: task.description || '',
+    list: task.list || 'personal',
+    dueDate: task.dueDate || '',
+    subtasks: task.subtasks ? [...task.subtasks] : [],
+    tags: task.tags ? [...task.tags] : []
   });
+  
+  const [newSubtaskTitle, setNewSubtaskTitle] = useState('');
+  const [newTagText, setNewTagText] = useState('');
   const [hasChanges, setHasChanges] = useState(false);
   const [showConfirmDelete, setShowConfirmDelete] = useState(false);
   const [titleError, setTitleError] = useState(false);
-
-  // Initialize local state when task changes
-  useEffect(() => {
-    if (task) {
-      setEditedTask({
-        title: task.title || '',
-        description: task.description || '',
-        list: task.list || 'personal',
-        dueDate: task.dueDate || ''
-      });
-      setHasChanges(false);
-      setTitleError(false);
-    }
-  }, [task]);
 
   // Handle field changes
   const handleChange = (field, value) => {
@@ -47,6 +40,60 @@ const TaskDetail = () => {
     }
   };
 
+  // Subtask management
+  const handleAddSubtask = () => {
+    if (!newSubtaskTitle.trim()) return;
+    const newSubtask = {
+      id: crypto.randomUUID(),
+      title: newSubtaskTitle.trim(),
+      completed: false
+    };
+    setEditedTask(prev => ({
+      ...prev,
+      subtasks: [...prev.subtasks, newSubtask]
+    }));
+    setNewSubtaskTitle('');
+    setHasChanges(true);
+  };
+
+  const handleToggleSubtask = (subtaskId) => {
+    setEditedTask(prev => ({
+      ...prev,
+      subtasks: prev.subtasks.map(st =>
+        st.id === subtaskId ? { ...st, completed: !st.completed } : st
+      )
+    }));
+    setHasChanges(true);
+  };
+
+  const handleDeleteSubtask = (subtaskId) => {
+    setEditedTask(prev => ({
+      ...prev,
+      subtasks: prev.subtasks.filter(st => st.id !== subtaskId)
+    }));
+    setHasChanges(true);
+  };
+
+  // Tag management
+  const handleAddTag = () => {
+    const cleanTag = newTagText.trim().replace(/^#/, '').toLowerCase();
+    if (!cleanTag || editedTask.tags.includes(cleanTag)) return;
+    setEditedTask(prev => ({
+      ...prev,
+      tags: [...prev.tags, cleanTag]
+    }));
+    setNewTagText('');
+    setHasChanges(true);
+  };
+
+  const handleRemoveTag = (tagToRemove) => {
+    setEditedTask(prev => ({
+      ...prev,
+      tags: prev.tags.filter(t => t !== tagToRemove)
+    }));
+    setHasChanges(true);
+  };
+
   // Save changes and close
   const handleSave = () => {
     if (!editedTask.title.trim()) {
@@ -54,11 +101,13 @@ const TaskDetail = () => {
       return;
     }
 
-    updateTask(task.id, {
+    updateTask(task.id || task._id, {
       title: editedTask.title.trim(),
       description: editedTask.description.trim(),
       list: editedTask.list,
-      dueDate: editedTask.dueDate || null
+      dueDate: editedTask.dueDate || null,
+      subtasks: editedTask.subtasks,
+      tags: editedTask.tags
     });
     
     setHasChanges(false);
@@ -71,27 +120,11 @@ const TaskDetail = () => {
   };
 
   const confirmDelete = () => {
-    deleteTask(task.id);
+    deleteTask(task.id || task._id);
     setShowConfirmDelete(false);
   };
 
-  // Empty state
-  if (!task) {
-    return (
-      <div className={`
-        rounded-xl p-8 shadow-lg text-center sticky top-24
-        ${darkMode ? 'bg-gray-900 border border-gray-800' : 'bg-white'}
-      `}>
-        <FileText 
-          size={48} 
-          className={`mx-auto mb-4 ${darkMode ? 'text-gray-700' : 'text-gray-300'}`}
-        />
-        <p className={`font-medium ${darkMode ? 'text-gray-500' : 'text-gray-500'}`}>
-          Select a task to view details
-        </p>
-      </div>
-    );
-  }
+  const completedSubtasksCount = editedTask.subtasks.filter(st => st.completed).length;
 
   return (
     <>
@@ -125,9 +158,9 @@ const TaskDetail = () => {
         </div>
 
         {/* Title */}
-        <div className="mb-6">
+        <div className="mb-5">
           <label className={`
-            text-sm font-medium mb-2 block
+            text-sm font-medium mb-1.5 block
             ${darkMode ? 'text-gray-400' : 'text-gray-600'}
           `}>
             <FileText size={14} className="inline mr-1" />
@@ -159,9 +192,9 @@ const TaskDetail = () => {
         </div>
 
         {/* Description */}
-        <div className="mb-6">
+        <div className="mb-5">
           <label className={`
-            text-sm font-medium mb-2 block
+            text-sm font-medium mb-1.5 block
             ${darkMode ? 'text-gray-400' : 'text-gray-600'}
           `}>
             <FileText size={14} className="inline mr-1" />
@@ -178,15 +211,170 @@ const TaskDetail = () => {
                 : 'bg-gray-50 text-gray-900 border border-gray-200 placeholder-gray-400'
               }
             `}
-            rows="4"
+            rows="3"
             placeholder="Add a description..."
           />
         </div>
 
-        {/* List Selection */}
-        <div className="mb-6">
+        {/* Subtasks Section */}
+        <div className="mb-5">
+          <div className="flex items-center justify-between mb-1.5">
+            <label className={`text-sm font-medium ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+              <CheckSquare size={14} className="inline mr-1" />
+              Subtasks
+            </label>
+            {editedTask.subtasks.length > 0 && (
+              <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${
+                completedSubtasksCount === editedTask.subtasks.length
+                  ? 'bg-green-500/20 text-green-400'
+                  : darkMode ? 'bg-gray-800 text-gray-400' : 'bg-gray-100 text-gray-600'
+              }`}>
+                {completedSubtasksCount}/{editedTask.subtasks.length}
+              </span>
+            )}
+          </div>
+
+          {/* Subtask list */}
+          <div className="space-y-1.5 mb-2">
+            {editedTask.subtasks.map(st => (
+              <div 
+                key={st.id} 
+                className={`group flex items-center justify-between p-2 rounded-lg transition-colors ${
+                  darkMode ? 'hover:bg-gray-800/80 bg-gray-800/40' : 'hover:bg-gray-100 bg-gray-50'
+                }`}
+              >
+                <button
+                  type="button"
+                  onClick={() => handleToggleSubtask(st.id)}
+                  className="flex items-center gap-2 flex-1 text-left"
+                >
+                  <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors shrink-0 ${
+                    st.completed 
+                      ? 'bg-blue-500 border-blue-500 text-white' 
+                      : darkMode ? 'border-gray-600' : 'border-gray-300'
+                  }`}>
+                    {st.completed && <Check size={12} strokeWidth={3} />}
+                  </div>
+                  <span className={`text-sm truncate ${
+                    st.completed 
+                      ? 'line-through text-gray-400 dark:text-gray-500' 
+                      : darkMode ? 'text-gray-200' : 'text-gray-800'
+                  }`}>
+                    {st.title}
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleDeleteSubtask(st.id)}
+                  className="opacity-0 group-hover:opacity-100 p-1 text-red-400 hover:text-red-500 transition-opacity"
+                  aria-label="Delete subtask"
+                >
+                  <Trash2 size={13} />
+                </button>
+              </div>
+            ))}
+          </div>
+
+          {/* Add Subtask Input */}
+          <div className="flex gap-1.5">
+            <input
+              type="text"
+              value={newSubtaskTitle}
+              onChange={(e) => setNewSubtaskTitle(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  handleAddSubtask();
+                }
+              }}
+              placeholder="Add a subtask..."
+              className={`
+                flex-1 text-sm rounded-lg px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-blue-500
+                ${darkMode 
+                  ? 'bg-gray-800 text-white border border-gray-700 placeholder-gray-500' 
+                  : 'bg-gray-50 text-gray-900 border border-gray-200 placeholder-gray-400'
+                }
+              `}
+            />
+            <button
+              type="button"
+              onClick={handleAddSubtask}
+              className="px-2.5 py-1.5 rounded-lg bg-blue-500 hover:bg-blue-600 text-white text-xs font-semibold flex items-center gap-1 transition-colors"
+            >
+              <Plus size={14} /> Add
+            </button>
+          </div>
+        </div>
+
+        {/* Tags Section */}
+        <div className="mb-5">
           <label className={`
-            text-sm font-medium mb-2 block
+            text-sm font-medium mb-1.5 block
+            ${darkMode ? 'text-gray-400' : 'text-gray-600'}
+          `}>
+            <Tag size={14} className="inline mr-1" />
+            Tags
+          </label>
+
+          {/* Tag pills */}
+          <div className="flex flex-wrap gap-1.5 mb-2">
+            {editedTask.tags.map(tag => (
+              <span
+                key={tag}
+                className={`
+                  inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold
+                  ${darkMode ? 'bg-purple-900/40 text-purple-300 border border-purple-800/50' : 'bg-purple-100 text-purple-700'}
+                `}
+              >
+                #{tag}
+                <button
+                  type="button"
+                  onClick={() => handleRemoveTag(tag)}
+                  className="hover:text-purple-900 dark:hover:text-purple-100"
+                  aria-label={`Remove tag ${tag}`}
+                >
+                  <X size={12} />
+                </button>
+              </span>
+            ))}
+          </div>
+
+          {/* Add Tag Input */}
+          <div className="flex gap-1.5">
+            <input
+              type="text"
+              value={newTagText}
+              onChange={(e) => setNewTagText(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  handleAddTag();
+                }
+              }}
+              placeholder="Tag name (e.g. urgent, feature)..."
+              className={`
+                flex-1 text-sm rounded-lg px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-blue-500
+                ${darkMode 
+                  ? 'bg-gray-800 text-white border border-gray-700 placeholder-gray-500' 
+                  : 'bg-gray-50 text-gray-900 border border-gray-200 placeholder-gray-400'
+                }
+              `}
+            />
+            <button
+              type="button"
+              onClick={handleAddTag}
+              className="px-2.5 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-700 text-white text-xs font-semibold flex items-center gap-1 transition-colors"
+            >
+              <Plus size={14} /> Tag
+            </button>
+          </div>
+        </div>
+
+        {/* List Selection */}
+        <div className="mb-5">
+          <label className={`
+            text-sm font-medium mb-1.5 block
             ${darkMode ? 'text-gray-400' : 'text-gray-600'}
           `}>
             <List size={14} className="inline mr-1" />
@@ -215,7 +403,7 @@ const TaskDetail = () => {
         {/* Due Date */}
         <div className="mb-6">
           <label className={`
-            text-sm font-medium mb-2 block
+            text-sm font-medium mb-1.5 block
             ${darkMode ? 'text-gray-400' : 'text-gray-600'}
           `}>
             <Calendar size={14} className="inline mr-1" />
@@ -223,7 +411,7 @@ const TaskDetail = () => {
           </label>
           <input
             type="date"
-            value={editedTask.dueDate}
+            value={editedTask.dueDate || ''}
             onChange={(e) => handleChange('dueDate', e.target.value)}
             className={`
               w-full rounded-lg px-4 py-2.5 cursor-pointer
@@ -280,6 +468,30 @@ const TaskDetail = () => {
       )}
     </>
   );
+};
+
+const TaskDetail = () => {
+  const { darkMode, selectedTask: task } = useAppContext();
+
+  // Empty state
+  if (!task) {
+    return (
+      <div className={`
+        rounded-xl p-8 shadow-lg text-center sticky top-24
+        ${darkMode ? 'bg-gray-900 border border-gray-800' : 'bg-white'}
+      `}>
+        <FileText 
+          size={48} 
+          className={`mx-auto mb-4 ${darkMode ? 'text-gray-700' : 'text-gray-300'}`}
+        />
+        <p className={`font-medium ${darkMode ? 'text-gray-500' : 'text-gray-500'}`}>
+          Select a task to view details
+        </p>
+      </div>
+    );
+  }
+
+  return <TaskDetailEditor key={task.id || task._id} task={task} />;
 };
 
 export default TaskDetail;

@@ -1,32 +1,72 @@
-import { createContext, useContext, useState } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import useTheme from '../hooks/useTheme';
 import useTasks from '../hooks/useTasks';
 import useLists from '../hooks/useLists';
 import useTaskFilters from '../hooks/useTaskFilters';
-
-const AppContext = createContext(null);
+import { useAuth } from '../hooks/useAuth';
+import { AppContext } from '../hooks/useAppContext';
 
 /**
- * Central provider that composes all custom hooks and exposes
- * them to the component tree via context.
+ * Central provider that composes custom hooks, authentication,
+ * priority task reminders, and backend API integration.
  */
 export function AppProvider({ children }) {
-  // Theme
-  const theme = useTheme();
+  // Authentication hook
+  const auth = useAuth();
+
+  // Auth Modal State
+  const [showAuthModal, setShowAuthModal] = useState(false);
+
+  // Priority Reminders Panel Toggle State
+  const [showPriorityReminders, setShowPriorityReminders] = useState(false);
+
+  // Theme hook (with backend sync capability)
+  const theme = useTheme(auth.isAuthenticated);
+
+  // Sync user theme preference when user profile loads
+  useEffect(() => {
+    if (auth.user && typeof auth.user.darkMode === 'boolean') {
+      theme.setDarkMode(auth.user.darkMode);
+    }
+  }, [auth.user, theme]);
 
   // Sidebar visibility
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
   // Tasks (core data)
-  const taskManager = useTasks();
+  const taskManager = useTasks(auth.isAuthenticated);
 
-  // Lists (depends on tasks for counts)
-  const listManager = useLists(taskManager.tasks);
+  // Lists (depends on tasks for counts & updateTask for list deletion reassignment)
+  const listManager = useLists(taskManager.tasks, taskManager.updateTask, auth.isAuthenticated);
 
   // Filters (depends on tasks and lists)
   const filterManager = useTaskFilters(taskManager.tasks, listManager.lists);
 
+  // Priority Count (Starred, Urgent, or Overdue/Due Today)
+  const today = new Date().toISOString().split('T')[0];
+  const priorityCount = useMemo(() => {
+    return taskManager.tasks.filter(task => {
+      if (task.completed) return false;
+      const isStarred = task.starred;
+      const isUrgent = task.tags && task.tags.some(tag => tag.toLowerCase() === 'urgent');
+      const isDueToday = task.dueDate === today;
+      const isOverdue = task.dueDate && task.dueDate < today;
+
+      return isStarred || isUrgent || isDueToday || isOverdue;
+    }).length;
+  }, [taskManager.tasks, today]);
+
   const value = {
+    // Auth
+    auth,
+    showAuthModal,
+    setShowAuthModal,
+
+    // Priority Reminders
+    showPriorityReminders,
+    setShowPriorityReminders,
+    priorityCount,
+
     // Theme
     darkMode: theme.darkMode,
     toggleDarkMode: theme.toggleDarkMode,
@@ -53,6 +93,7 @@ export function AppProvider({ children }) {
     lists: listManager.lists,
     listsWithCount: listManager.listsWithCount,
     addList: listManager.addList,
+    deleteList: listManager.deleteList,
     getListColor: listManager.getListColor,
 
     // Filters & Navigation
@@ -73,16 +114,4 @@ export function AppProvider({ children }) {
       {children}
     </AppContext.Provider>
   );
-}
-
-/**
- * Hook to consume the app context.
- * Throws if used outside AppProvider.
- */
-export function useAppContext() {
-  const context = useContext(AppContext);
-  if (!context) {
-    throw new Error('useAppContext must be used within an AppProvider');
-  }
-  return context;
 }
