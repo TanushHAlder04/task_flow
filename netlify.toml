@@ -1,0 +1,12 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "24.11.1"
+
+# Handle client-side routing (React Router etc.)
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
