@@ -4,6 +4,7 @@
 
 [build.environment]
   NODE_VERSION = "24.11.1"
+  SECRETS_SCAN_OMIT_KEYS = "PORT"
 
 # Handle client-side routing (React Router etc.)
 [[redirects]]
